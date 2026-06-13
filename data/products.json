@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Kingston A400",
+    "type": "SSD",
+    "size_gb": 960,
+    "price": 11399,
+    "speed_mb_s": 450,
+    "use_case": ["games", "system"]
+  },
+  {
+    "name": "WD Purple",
+    "type": "HDD",
+    "size_gb": 2000,
+    "price": 13299,
+    "speed_mb_s": 175,
+    "use_case": ["video", "archive"]
+  }
+]

@@ -7,10 +7,10 @@ def load_products():
         products = json.load(json_data)
     return products
 
-def recommend_products(use_case, budget):
+def recommend_products(use_case, d_type, budget):
     products = load_products()
     options = []
     for product in products:
-        if use_case in product['use_case'] and product['price'] <= budget:
+        if use_case in product['use_case'] and d_type in product['type'] and product['price'] <= budget:
             options.append(product['name'])
     return options

@@ -7,10 +7,19 @@ def load_products():
         products = json.load(json_data)
     return products
 
-def recommend_products(use_case, d_type, budget):
+def recommend_products(entities):
     products = load_products()
     options = []
+
+    use_case = entities.get('use_case')
+    d_type = entities.get('type')
+    budget = entities.get('budget', float('inf'))
+
     for product in products:
-        if use_case in product['use_case'] and d_type in product['type'] and product['price'] <= budget:
-            options.append(product['name'])
+        if (
+                (use_case is None or use_case in product['use_case'])
+                and (d_type is None or d_type in product['type'])
+                and product['price'] <= budget
+        ):
+            options.append(product)
     return options

@@ -1,12 +1,14 @@
 import os
-from itertools import product
 
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import CommandHandler, MessageHandler, CallbackContext, filters, \
     Application, ApplicationBuilder
 
+from services.entity_extractor import extract_entities
 from services.recommender import recommend_products
+from services.intent_classifier import IntentClassifier
+from services.response_generator import recommend_response
 
 
 async def start(update: Update, context: CallbackContext) -> None:
@@ -17,25 +19,28 @@ async def help_command(update: Update, context: CallbackContext) -> None:
 
 async def run_bot(update: Update, context: CallbackContext) -> None:
     replica = update.message.text
+    print(f'replica: {replica}')
 
-    user_use_case = 'None'
+    classifier = IntentClassifier()
+    intent = classifier.predict(replica)
+    print(f'intent: {intent}')
 
-    if 'игр' in replica:
-        user_use_case = 'games'
-    if 'видео' in replica:
-        user_use_case = 'video'
-
-    products = recommend_products(user_use_case, 15000)
-    if len(products) > 0:
-        answer = 'Вам подойдут:\n'
-        for product in products:
-            answer += f'- {product}\n'
-    else: answer = 'Не могу ничего вам предложить('
+    answer = 'Пу-пу-пу, чё-то я не знаю, что ответить'
+    match intent:
+        case 'greet':
+            answer = 'И вам не хворать'
+        case 'recommend':
+            entities = extract_entities(replica)
+            print(f'entities: {entities}')
+            if len(entities) > 0:
+                products = recommend_products(entities)
+                answer = recommend_response(products)
+            else: answer = 'Укажите, какие параметры вам важны'
+        case 'buy':
+            answer = 'Купить можно по ссылке <тут типа ссылка>'
 
     await update.message.reply_text(answer)
 
-    # print(stats)
-    print(replica)
     print(answer)
     print()
 
@@ -49,6 +54,8 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, run_bot))
 
     application.run_polling()
+
+    intent_classifier = IntentClassifier()
 
 if __name__ == "__main__":
     main()

@@ -3,11 +3,11 @@ def recommend_response(products):
         return ('К сожалению, ничего не могу вам предложить(\n'
                 'Попробуйте другие параметры, и я обязательно что-нибудь подберу')
 
-    response = 'Могу предложить следующие варианты:'
+    response = 'Могу предложить следующие варианты:\n'
 
     for product in products:
         response += (f'\n{product['name']}:'
-                     f'\n - тип: {product['type']}:'
+                     f'\n - тип: {product['type']}'
                      f'\n - объем: {product['size_gb']} ГБ'
                      f'\n - цена: {product['price']} руб.\n')
 

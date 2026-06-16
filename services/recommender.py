@@ -14,6 +14,7 @@ def recommend_products(entities):
     use_case = entities.get('use_case')
     d_type = entities.get('type')
     budget = entities.get('budget', float('inf'))
+    price_category = entities.get('price_category')
 
     for product in products:
         if (
@@ -22,4 +23,13 @@ def recommend_products(entities):
                 and product['price'] <= budget
         ):
             options.append(product)
+
+    if price_category == 'cheap':
+        options = sorted(options, key=lambda x: x['price'])
+        return options[:3]
+
+    if price_category == 'premium':
+        options = sorted(options, key=lambda x: x['price'], reverse=True)
+        return options[:3]
+
     return options

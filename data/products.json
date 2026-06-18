@@ -8,11 +8,29 @@
     "use_case": ["games", "system"]
   },
   {
+    "name": "Apacer AS350 PANTHER",
+    "type": "SSD",
+    "size_gb": 512,
+    "price": 7799,
+    "speed_mb_s": 540,
+    "use_case": ["system"]
+  },
+  {
     "name": "WD Purple",
     "type": "HDD",
-    "size_gb": 2000,
+    "size_gb": 2048,
     "price": 13299,
     "speed_mb_s": 175,
+    "rec_tech": "CMR",
     "use_case": ["video", "archive"]
+  },
+  {
+    "name": "Seagate BarraCuda",
+    "type": "HDD",
+    "size_gb": 4096,
+    "price": 14299,
+    "speed_mb_s": 190,
+    "rec_tech": "SMR",
+    "use_case": ["archive"]
   }
 ]

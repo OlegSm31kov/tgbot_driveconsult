@@ -20,7 +20,7 @@ def extract_entities(text: str):
         entities['use_case'] = 'archive'
 
     # бюджет
-    if 'недорог' in text or 'дешев' or 'дешёв' in text or 'бюджетн' in text:
+    if 'недорог' in text or 'дешев'  or 'дешёв' in text or 'бюджетн' in text:
         entities['price_category'] = 'cheap'
 
     if 'дорог' in text or 'премиум' in text:

@@ -13,12 +13,14 @@ def recommend_products(entities):
 
     use_case = entities.get('use_case')
     d_type = entities.get('type')
+    size = entities.get('size')
     budget = entities.get('budget', float('inf'))
     price_category = entities.get('price_category')
 
     for product in products:
         if (
                 (use_case is None or use_case in product['use_case'])
+                and (size is None or size <= product['size'])
                 and (d_type is None or d_type in product['type'])
                 and product['price'] <= budget
         ):

@@ -36,7 +36,8 @@ NO_HOBBY_PATTERNS = [
     "ничего",
     "хз",
     "неа",
-    "нет"
+    "нет",
+    "никаких"
 ]
 
 FAILURE_RESPONSES = [

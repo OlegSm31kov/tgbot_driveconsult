@@ -32,6 +32,9 @@ class DialogueRetriever:
                 if "|" not in line:
                     continue
 
+                if line[-1] == "?":
+                    continue
+
                 question, answer = (
                     line.split("|", maxsplit=1)
                 )

@@ -1,4 +1,5 @@
 import random
+from sys import intern
 
 from data.responses import GREET_RESPONSES, FAILURE_RESPONSES, BYE_RESPONSES, SMALLTALK_RESPONSES, HOBBY_QUESTIONS, \
     NO_HOBBY_PATTERNS
@@ -24,7 +25,6 @@ class DialogManager:
 
         # если к покупке ещё не перешли, то обрабатываем общее состояние диалога
         dialog_state = context.user_data.get("dialog_state")
-        print(f"dialog_state: {dialog_state}")
         if dialog_state:
             handled = await self._process_dialog_state(replica, update, context)
             if handled:
@@ -44,6 +44,7 @@ class DialogManager:
 
     async def _process_dialog_state(self, replica, update, context):
         state = context.user_data.get("dialog_state")
+        print(f"dialog_state: {state}")
         match state:
             case "greeting":
                 context.user_data["dialog_state"] = "asking_hobby"
@@ -58,19 +59,18 @@ class DialogManager:
 
             case "asking_hobby":
                 if self.has_no_hobby(replica):
-                    context.user_data["dialog_state"] = "advertising"
+                    context.user_data["dialog_state"] = "awaiting_ad_response"
 
                     await update.message.reply_text(
-                        "Понимаю. В любом случае сегодня почти каждому "
-                        "приходится хранить фотографии, документы или видео.\n\n"
-                        "Могу помочь подобрать накопитель."
+                        "Пон\nВ любом случае каждому нужно хранить фотографии, документы или видео\n"
+                        "Могу помочь подобрать накопитель для этого"
                     )
 
                     return True
                 hobby = self._detect_hobby(replica)
                 if hobby:
                     context.user_data["hobby"] = hobby
-                    context.user_data["dialog_state"] = "advertising"
+                    context.user_data["dialog_state"] = "awaiting_ad_response"
 
                     await update.message.reply_text(
                         self._build_advertising_message(hobby))
@@ -79,6 +79,31 @@ class DialogManager:
 
                 await update.message.reply_text(random.choice(SMALLTALK_RESPONSES))
                 await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
+
+            case "awaiting_ad_response":
+                intent = (self.classifier.predict(replica))[0]
+                print(f"intent: {intent}")
+
+                if intent == "yes":
+                    context.user_data["dialog_state"] = None
+                    await update.message.reply_text(
+                        "Отлично, для каких задач нужен диск?"
+                    )
+                    context.user_data["step"] = "awaiting_use_case"
+                    return True
+
+                if intent == "no":
+                    context.user_data["dialog_state"] = None
+                    await update.message.reply_text(
+                        "Хорошо\nЕсли у вас закончится место и понадобится помощь "
+                        "с выбором накопителя — я всегда к вашим услугам"
+                    )
+                    return True
+
+                await update.message.reply_text(
+                    "Не совсем понял. Хотите подобрать накопитель?"
+                )
+                return True
 
             case "advertising":
                 entities = extract_entities(replica)
@@ -127,6 +152,7 @@ class DialogManager:
         return False
 
     async def _process_intent(self, intent, replica, update, context):
+        print(f"intent: {intent}")
         match intent:
             case "greet":
                 context.user_data["dialog_state"] = "greeting"

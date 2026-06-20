@@ -26,6 +26,7 @@ class DialogManager:
 
         # если к покупке ещё не перешли, то обрабатываем общее состояние диалога
         dialog_state = context.user_data.get("dialog_state")
+        print(f"dialog_state: {dialog_state}")
         if dialog_state:
             handled = await self._process_dialog_state(replica, update, context)
             if handled:
@@ -34,7 +35,7 @@ class DialogManager:
         # если шага нет - определяем intent
         intent, confidence = self.classifier.predict(replica)
         print(f"intent: {intent}\nconfidence: {confidence}")
-        if abs(confidence) > 0.3:
+        if confidence > 0.3:
             await self._process_intent(intent, replica, update, context)
         else:
             answer = self.retriever.get_response(replica)

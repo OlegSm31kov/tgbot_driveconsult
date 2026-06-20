@@ -38,11 +38,7 @@ class DialogManager:
         if confidence > 0.3:
             await self._process_intent(intent, replica, update, context)
         else:
-            answer = self.retriever.get_response(replica)
-            if answer:
-                await update.message.reply_text(answer)
-            else:
-                await update.message.reply_text(random.choice(FAILURE_RESPONSES))
+            await self._process_intent("smalltalk", replica, update, context)
 
     async def _process_dialog_state(self, replica, update, context):
         state = context.user_data.get("dialog_state")
@@ -187,6 +183,9 @@ class DialogManager:
                 answer = self.retriever.get_response(replica)
                 if answer:
                     await update.message.reply_text(answer)
+                    if random.choice([True, False]):
+                        context.user_data["dialog_state"] = "asking_hobby"
+                        await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
                 else:
                     await update.message.reply_text(random.choice(FAILURE_RESPONSES))
 

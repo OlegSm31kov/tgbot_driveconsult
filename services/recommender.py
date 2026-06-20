@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+from data.user_profiles import USE_CASE_PRIORITIES
+
+
 def load_products():
     json_path = Path(__file__).parent.parent / 'data' / 'products.json'
     with json_path.open('r', encoding='utf-8') as json_data:
@@ -8,30 +11,41 @@ def load_products():
     return products
 
 def recommend_products(entities):
+    filtered_products = filter_products(entities)
+
+    if entities["use_case"]:
+        filtered_products.sort(
+            key=lambda p: calculate_score(
+                p, USE_CASE_PRIORITIES[entities["use_case"]]
+            ),
+            reverse=True
+        )
+
+    return filtered_products
+
+def calculate_score(product, priorities):
+    score = 0
+    score += product["speed_mb_s"] * priorities["speed_weight"]
+    score += product["size_gb"] * priorities["size_weight"]
+    score -= product["price"] / 1000 * priorities["price_weight"]
+    if product["type"] == priorities["preferred_type"]:
+        score += 1000
+    return score
+
+def filter_products(entities):
     products = load_products()
     options = []
 
-    use_case = entities.get('use_case')
     d_type = entities.get('type')
     size = entities.get('size')
     budget = entities.get('budget', float('inf'))
-    price_category = entities.get('price_category')
 
     for product in products:
         if (
-                (use_case is None or use_case in product['use_case'])
-                and (size is None or size <= product['size'])
+                (size is None or size <= product['size'])
                 and (d_type is None or d_type in product['type'])
                 and product['price'] <= budget
         ):
             options.append(product)
-
-    if price_category == 'cheap':
-        options = sorted(options, key=lambda x: x['price'])
-        return options[:3]
-
-    if price_category == 'premium':
-        options = sorted(options, key=lambda x: x['price'], reverse=True)
-        return options[:3]
 
     return options

@@ -1,8 +1,9 @@
 import random
 from sys import intern
 
-from data.responses import GREET_RESPONSES, FAILURE_RESPONSES, BYE_RESPONSES, SMALLTALK_RESPONSES, HOBBY_QUESTIONS, \
-    NO_HOBBY_PATTERNS
+from data.responses import GREET_RESPONSES, FAILURE_RESPONSES, BYE_RESPONSES, SMALLTALK_RESPONSES, HOBBY_QUESTIONS
+
+from data.user_profiles import HOBBIES, USE_CASE_MAPPING
 from services.entity_extractor import extract_entities
 from services.recommender import recommend_products
 
@@ -33,7 +34,7 @@ class DialogManager:
         # если шага нет - определяем intent
         intent, confidence = self.classifier.predict(replica)
         print(f"intent: {intent}\nconfidence: {confidence}")
-        if confidence > 0.5:
+        if abs(confidence) > 0.3:
             await self._process_intent(intent, replica, update, context)
         else:
             answer = self.retriever.get_response(replica)
@@ -58,39 +59,40 @@ class DialogManager:
                 return True
 
             case "asking_hobby":
-                if self.has_no_hobby(replica):
-                    context.user_data["dialog_state"] = "awaiting_ad_response"
-
-                    await update.message.reply_text(
-                        "Пон\nВ любом случае каждому нужно хранить фотографии, документы или видео\n"
-                        "Могу помочь подобрать накопитель для этого"
-                    )
-
-                    return True
                 hobby = self._detect_hobby(replica)
                 if hobby:
                     context.user_data["hobby"] = hobby
-                    context.user_data["dialog_state"] = "awaiting_ad_response"
+                if hobby and hobby != "no_hobby":
+                    context.user_data["use_case"] = USE_CASE_MAPPING[hobby]
+                else:
+                    hobby = "no_hobby"
+                    context.user_data["hobby"] = "no_hobby"
+                    context.user_data["use_case"] = "archive"
+                context.user_data["dialog_state"] = "awaiting_ad_response"
 
-                    await update.message.reply_text(
-                        self._build_advertising_message(hobby))
-
-                    return True
-
-                await update.message.reply_text(random.choice(SMALLTALK_RESPONSES))
-                await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
+                await update.message.reply_text(self._build_advertising_message(hobby))
+                return True
 
             case "awaiting_ad_response":
                 intent = (self.classifier.predict(replica))[0]
                 print(f"intent: {intent}")
 
                 if intent == "yes":
+                    if self._can_recommend(context.user_data):
+                        await self._give_recommendations(update, context)
+                        return True
+
                     context.user_data["dialog_state"] = None
-                    await update.message.reply_text(
-                        "Отлично, для каких задач нужен диск?"
-                    )
-                    context.user_data["step"] = "awaiting_use_case"
-                    return True
+
+                    if "use_case" not in context.user_data:
+                        await update.message.reply_text("Отлично, для каких задач нужен диск?")
+                        context.user_data["step"] = "awaiting_use_case"
+                        return True
+
+                    if "budget" not in context.user_data:
+                        context.user_data["step"] = "awaiting_budget"
+                        await update.message.reply_text("Каков ваш бюджет?")
+                        return True
 
                 if intent == "no":
                     context.user_data["dialog_state"] = None
@@ -101,7 +103,7 @@ class DialogManager:
                     return True
 
                 await update.message.reply_text(
-                    "Не совсем понял. Хотите подобрать накопитель?"
+                    "Не совсем понял\nХотите подобрать накопитель?"
                 )
                 return True
 
@@ -130,7 +132,7 @@ class DialogManager:
                 self._update_user_data(replica, context)
                 if "use_case" not in context.user_data:
                     await update.message.reply_text("Не понял назначение диска\n"
-                                                    "Укажите: игры, видео, архив или система.")
+                                                    "Укажите: игры, видео, архив или система")
                     return True
 
                 if "budget" not in context.user_data:
@@ -144,7 +146,7 @@ class DialogManager:
             case "awaiting_budget":
                 self._update_user_data(replica, context)
                 if "budget" not in context.user_data:
-                    await update.message.reply_text("Укажите бюджет числом.")
+                    await update.message.reply_text("Укажите бюджет числом")
                     return True
 
                 await self._give_recommendations(update, context)
@@ -197,45 +199,15 @@ class DialogManager:
     def _detect_hobby(self, text):
         text = text.lower()
 
-        hobbies = {
-            "игр": "games",
-            "играю": "games",
-            "фото": "photo",
-            "фотограф": "photo",
-            "монтаж": "video",
-            "видео": "video",
-            "музык": "music"
-        }
+        for hobby_name, hobby_data in HOBBIES.items():
+            for keyword in hobby_data["keywords"]:
+                if keyword in text:
+                    return hobby_name
 
-        for keyword, hobby in hobbies.items():
-            if keyword in text:
-                return hobby
         return None
 
-    def has_no_hobby(self, text: str) -> bool:
-        text = text.lower()
-        return any(pattern in text for pattern in NO_HOBBY_PATTERNS)
-
     def _build_advertising_message(self, hobby):
-        messages = {
-            "games":
-                "Игры занимают много места\n "
-                "Хороший SSD позволит быстрее загружать их, а большой объём позволит "
-                "хранить больше игр и не удалять старые ради новых",
-
-            "photo":
-                "Фотографии быстро накапливаются и забивают всю память\n"
-                "Вместительный HDD не помешает, чтобы сохранить место на телефоне или на основном диске",
-
-            "video":
-                "Видео могут занимать десятки гигабайт\n"
-                "Для них особенно важен вместительный диск",
-
-            "music":
-                "Большое количество музыки удобно хранить на отдельном накопителе"
-        }
-
-        return messages.get(hobby) + "\nМогу помочь подобрать накопитель"
+        return HOBBIES[hobby]["ad_message"] + "\nМогу помочь подобрать накопитель"
 
     async def _give_recommendations(self, update, context):
         products = recommend_products(context.user_data)

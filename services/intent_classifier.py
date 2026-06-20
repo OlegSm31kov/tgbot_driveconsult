@@ -33,4 +33,9 @@ class IntentClassifier:
 
     def predict(self, text):
         vector = self.vectorizer.transform([text.lower()])
-        return self.classifier.predict(vector)[0]
+        scores = (self.classifier.decision_function(vector))[0]
+
+        best_score = max(scores)
+        best_intent = (self.classifier.classes_[scores.argmax()])
+
+        return best_intent, best_score

@@ -13,15 +13,17 @@ def load_products():
 def recommend_products(entities):
     filtered_products = filter_products(entities)
 
-    if entities["use_case"]:
-        filtered_products.sort(
-            key=lambda p: calculate_score(
-                p, USE_CASE_PRIORITIES[entities["use_case"]]
-            ),
-            reverse=True
-        )
+    if entities.get("use_case") is None:
+        return filtered_products
 
+    filtered_products.sort(
+        key=lambda p: calculate_score(
+            p, USE_CASE_PRIORITIES[entities["use_case"]]
+        ),
+        reverse=True
+    )
     return filtered_products
+
 
 def calculate_score(product, priorities):
     score = 0

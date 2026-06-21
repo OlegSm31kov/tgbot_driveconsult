@@ -4,14 +4,16 @@
     "type": "SSD",
     "size_gb": 960,
     "price": 11399,
-    "speed_mb_s": 450
+    "speed_mb_s": 450,
+    "link": "https://tinyurl.com/27k595ev"
   },
   {
     "name": "Apacer AS350 PANTHER",
     "type": "SSD",
     "size_gb": 512,
     "price": 7799,
-    "speed_mb_s": 540
+    "speed_mb_s": 540,
+    "link": "https://tinyurl.com/27k595ev"
   },
   {
     "name": "WD Purple",
@@ -19,7 +21,8 @@
     "size_gb": 2048,
     "price": 13299,
     "speed_mb_s": 175,
-    "rec_tech": "CMR"
+    "rec_tech": "CMR",
+    "link": "https://tinyurl.com/27k595ev"
   },
   {
     "name": "Seagate BarraCuda",
@@ -27,13 +30,15 @@
     "size_gb": 4096,
     "price": 14299,
     "speed_mb_s": 190,
-    "rec_tech": "SMR"
+    "rec_tech": "SMR",
+    "link": "https://tinyurl.com/27k595ev"
   },
   {
     "name": "Samsung 870 EVO",
     "type": "SSD",
     "size_gb": 1000,
     "price": 24299,
-    "speed_mb_s": 560
+    "speed_mb_s": 560,
+    "link": "https://tinyurl.com/27k595ev"
   }
 ]

@@ -6,9 +6,12 @@ def extract_entities(text: str):
     entities = {}
 
     # тип диска
-    if 'ssd' in text:
+    ssd_keywords = ['ssd', 's s d', 'ссд', 'эсэсдэ', 'эс эс дэ', 'эсэсди', 'эс эс ди', 'твердотел']
+    hdd_keywords = ['hdd', 'h d d', 'шдд', 'ашдиди', 'аш ди ди', 'ди ди', 'винчестер', 'жд']
+
+    if any(k in text for k in ssd_keywords):
         entities['type'] = 'SSD'
-    elif 'hdd' in text:
+    elif any(k in text for k in hdd_keywords):
         entities['type'] = 'HDD'
 
     #
@@ -37,7 +40,7 @@ def extract_entities(text: str):
     if 'дорог' in text or 'премиум' in text:
         entities['price_category'] = 'premium'
 
-    budget_match = re.search(r"(\d+)\s*(к|тыс|тысяч|тыщи)\b", text)
+    budget_match = re.search(r"(\d+)\s*(к|тыс|тысяч|тыщи| 000)\b", text)
     if budget_match:
         entities['budget'] = int(budget_match.group(1)) * 1000
 

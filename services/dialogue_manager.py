@@ -1,4 +1,5 @@
 import random
+from itertools import product
 from sys import intern
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -18,7 +19,13 @@ class DialogManager:
     async def handle_message(self, replica, update, context):
         print(f"replica: {replica}")
 
-        # сначала пытаемся обработать текущий шаг в рекомендации и покупке диска
+        intent, confidence = self.classifier.predict(replica)
+        print(f"intent: {intent}\nconfidence: {confidence}")
+        if confidence > 0.3:
+            await self._process_intent(intent, replica, update, context)
+            return
+
+        # пытаемся обработать текущий шаг в рекомендации и покупке диска
         step = context.user_data.get("step")
         print(f"step: {step}")
         if step:
@@ -34,13 +41,8 @@ class DialogManager:
             if handled:
                 return
 
-        # если шага нет - определяем intent
-        intent, confidence = self.classifier.predict(replica)
-        print(f"intent: {intent}\nconfidence: {confidence}")
-        if confidence > 0.3:
-            await self._process_intent(intent, replica, update, context)
-        else:
-            await self._process_intent("smalltalk", replica, update, context)
+        await self._process_intent("smalltalk", replica, update, context)
+        return
 
     async def _process_dialog_state(self, replica, update, context):
         state = context.user_data.get("dialog_state")
@@ -67,14 +69,16 @@ class DialogManager:
                     hobby = "no_hobby"
                     context.user_data["hobby"] = "no_hobby"
                     context.user_data["use_case"] = "archive"
-                context.user_data["dialog_state"] = "awaiting_ad_response"
+                context.user_data["dialog_state"] = None
+
+                await update.message.reply_text(random.choice(SMALLTALK_RESPONSES))
 
                 products = recommend_products(context.user_data)
                 top_product = products[0]
-                await update.message.reply_text(self._build_advertising_message(hobby, top_product))
-                await show_showcase_menu(update, context)
+                await update.message.reply_text(self._build_advertising_message(hobby, top_product), parse_mode="HTML")
+                await show_showcase_menu(update, top_product, context)
 
-                context.user_data["step"] = "after_showcase"
+                context.user_data["step"] = None
                 return True
 
             case "awaiting_ad_response":
@@ -83,7 +87,8 @@ class DialogManager:
 
                 if intent == "yes":
                     if self._can_recommend(context.user_data):
-                        await self._give_recommendations(update, context)
+                        products = recommend_products(context.user_data)[:3]
+                        await self._give_recommendations(update, products)
                         return True
 
                     context.user_data["dialog_state"] = None
@@ -106,23 +111,16 @@ class DialogManager:
                     )
                     return True
 
-                await update.message.reply_text(
-                    "Не совсем понял\nХотите подобрать накопитель?"
-                )
+                await self._process_intent(intent, replica, update, context)
                 return True
 
             case "after_showcase":
                 intent = self.classifier.predict(replica)[0]
-                if intent == "yes":
-                    await update.message.reply_text("Тут типа ссылка")
-                elif intent == "show_more":
-                    products = recommend_products(context.user_data)[0:4]
-                    answer = f"Кроме {products[0]} могу предложить:"
-                    for product in products[1:4]:
-                        answer += (f'\n{product['name']}:'
-                                   f'\n - тип: {product['type']}'
-                                   f'\n - объем: {product['size_gb']} ГБ'
-                                   f'\n - цена: {product['price']} руб.\n')
+
+                if intent == "show_more":
+                    products = recommend_products(context.user_data)[1:4]
+                    await self._give_recommendations(update, products)
+
                 elif intent == "no":
                     await update.message.reply_text(
                         "Хорошо\nЕсли у вас закончится место и понадобится помощь "
@@ -135,7 +133,8 @@ class DialogManager:
                 context.user_data.update(entities)
 
                 if self._can_recommend(context.user_data):
-                    await self._give_recommendations(update, context)
+                    products = recommend_products(context.user_data)[:3]
+                    await self._give_recommendations(update, products)
                     return True
 
                 context.user_data["step"] = "awaiting_budget"
@@ -153,27 +152,37 @@ class DialogManager:
         match step:
             case "awaiting_use_case":
                 self._update_user_data(replica, context)
+
+                if self._can_recommend(context.user_data):
+                    products = recommend_products(context.user_data)[:3]
+                    await self._give_recommendations(update, products)
+                    context.user_data["step"] = None
+                    return True
+
                 if "use_case" not in context.user_data:
-                    await update.message.reply_text("Не понял назначение диска\n"
-                                                    "Укажите: игры, видео, архив или система")
+                    await update.message.reply_text("Укажите назначение диска: "
+                                                    "игры, видео, архив или система")
                     return True
 
                 if "budget" not in context.user_data:
-                    context.user_data["step"] = "awaiting_budget"
                     await update.message.reply_text("Каков ваш бюджет?")
+                    context.user_data["step"] = "awaiting_budget"
                     return True
-
-                await self._give_recommendations(update, context)
-                return True
 
             case "awaiting_budget":
                 self._update_user_data(replica, context)
+
                 if "budget" not in context.user_data:
                     await update.message.reply_text("Укажите бюджет числом")
                     return True
 
-                await self._give_recommendations(update, context)
+                products = recommend_products(context.user_data)[:3]
+                await self._give_recommendations(update, products)
+                context.user_data["step"] = None
                 return True
+
+
+
         return False
 
     async def _process_intent(self, intent, replica, update, context):
@@ -188,7 +197,8 @@ class DialogManager:
                 entities = extract_entities(replica)
                 context.user_data.update(entities)
                 if self._can_recommend(context.user_data):
-                    await self._give_recommendations(update, context)
+                    products = recommend_products(context.user_data)[:3]
+                    await self._give_recommendations(update, products)
                     return
 
                 if "budget" not in context.user_data:
@@ -200,10 +210,6 @@ class DialogManager:
                     context.user_data["step"] = "awaiting_use_case"
                     await update.message.reply_text("Для каких задач нужен диск?")
                     return
-
-            case "buy":
-                await update.message.reply_text("Купить можно по ссылке: "
-                                                "<ссылка>")
 
             case "smalltalk":
                 answer = self.retriever.get_response(replica)
@@ -233,10 +239,10 @@ class DialogManager:
         return None
 
     def _build_advertising_message(self, hobby, product):
-        return HOBBIES[hobby]["ad_message"] + f"\nНапример, вам может подойти {product["name"]}"
+        return (HOBBIES[hobby]["ad_message"] +
+                f"\nНапример, вам может подойти <a href='{product['link']}'>{product['name']}</a>.\n")
 
-    async def _give_recommendations(self, update, context):
-        products = recommend_products(context.user_data)
+    async def _give_recommendations(self, update, products):
         if not products:
             answer =('К сожалению, ничего не могу вам предложить(\n '
                      'Попробуйте другие параметры, и я обязательно что-нибудь подберу')
@@ -245,13 +251,12 @@ class DialogManager:
             answer = 'Могу предложить следующие варианты:\n'
 
             for product in products:
-                answer += (f'\n{product['name']}:'
+                answer  +=  (f"\n<a href='{product['link']}'>{product['name']}</a>"
                              f'\n - тип: {product['type']}'
                              f'\n - объем: {product['size_gb']} ГБ'
-                             f'\n - цена: {product['price']} руб.\n')
+                             f'\n - цена: {product['price']} руб.\n\n')
 
-        await update.message.reply_text(answer)
-        context.user_data.clear()
+        await update.message.reply_text(answer, parse_mode="HTML")
 
     def _update_user_data(self, replica, context):
         entities = extract_entities(replica)
@@ -269,9 +274,9 @@ class DialogManager:
         count = sum(key in user_data for key in useful_entities)
         return count >= 2
 
-async def show_showcase_menu(update, context):
+async def show_showcase_menu(update, product, context):
     keyboard = [
-        [InlineKeyboardButton("Купить этот диск", callback_data="buy_current")],
+        [InlineKeyboardButton("Купить этот диск", url=product["link"])],
         [InlineKeyboardButton("Показать другие варианты", callback_data="show_more")],
         [InlineKeyboardButton("Пока не интересно", callback_data="not_interested")]
     ]
@@ -279,7 +284,7 @@ async def show_showcase_menu(update, context):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await update.message.reply_text(
-        "Что вас интересует?",
+        random.choice(["Что вас интересует?", "Что думаете?", "Как вам?"]),
         reply_markup=reply_markup
     )
 
@@ -296,18 +301,16 @@ async def showcase_callback(update, context):
             )
 
         case "show_more":
-            products = recommend_products(context.user_data)
-            alternatives = products[1:4]
+            products = recommend_products(context.user_data)[1:4]
             answer = "Другие варианты:\n\n"
-
-            for product in alternatives:
-                answer += (
-                    f"{product['name']}\n"
-                    f"Цена: {product['price']} руб.\n\n"
-                )
-            await query.message.reply_text(answer)
+            for product in products:
+                answer += (f"<a href='{product['link']}'>{product['name']}</a>"
+                           f'\n - тип: {product['type']}'
+                           f'\n - объем: {product['size_gb']} ГБ'
+                           f'\n - цена: {product['price']} руб.\n\n')
+            await query.message.reply_text(answer, parse_mode="HTML")
 
         case "not_interested":
             await query.message.reply_text(
-                "Хорошо. Если понадобится помощь с выбором накопителя, обращайтесь."
+                "Хорошо\n Если понадобится помощь с выбором накопителя, обращайтесь!"
             )

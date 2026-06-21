@@ -212,14 +212,20 @@ class DialogManager:
                     return
 
             case "smalltalk":
+                hobby_asked = context.user_data.get("hobby_asked")
                 answer = self.retriever.get_response(replica)
                 if answer:
                     await update.message.reply_text(answer)
-                    if random.choice([True, False]):
-                        context.user_data["dialog_state"] = "asking_hobby"
-                        await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
+                    if not hobby_asked:
+                        if random.choice([True, False, True]):
+                            context.user_data["dialog_state"] = "asking_hobby"
+                            await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
+                            context.user_data["hobby_asked"] = True
+                            return
                 else:
                     await update.message.reply_text(random.choice(FAILURE_RESPONSES))
+                    return
+
 
             case "bye":
                 context.user_data.clear()

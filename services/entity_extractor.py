@@ -14,12 +14,12 @@ def extract_entities(text: str):
     elif any(k in text for k in hdd_keywords):
         entities['type'] = 'HDD'
 
-    #
-    size_match = re.search(r"(\d+)\s*(тб|tb)", text)
+    # объём
+    size_match = re.search(r"(\d+)\s*(тб|tb|терабайт)", text)
     if size_match:
         entities['size_gb'] = int(size_match.group(1)) * 1024
 
-    size_match = re.search(r"(\d+)\s*(гб|gb)", text)
+    size_match = re.search(r"(\d+)\s*(гб|gb|гигабайт)", text)
     if size_match:
         entities['size_gb'] = int(size_match.group(1))
 
@@ -34,7 +34,7 @@ def extract_entities(text: str):
         entities['use_case'] = 'system'
 
     # бюджет
-    if 'недорог' in text or 'дешев'  or 'дешёв' in text or 'бюджетн' in text:
+    if 'недорог' in text or 'дешев' in text or 'бюджетн' in text:
         entities['price_category'] = 'cheap'
 
     if 'дорог' in text or 'премиум' in text:

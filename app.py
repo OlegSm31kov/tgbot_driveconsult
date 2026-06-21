@@ -4,9 +4,10 @@ import random
 from dotenv import load_dotenv
 from tempfile import NamedTemporaryFile
 from telegram import Update
-from telegram.ext import CommandHandler, MessageHandler, CallbackContext, filters, ApplicationBuilder
+from telegram.ext import CommandHandler, MessageHandler, CallbackContext, filters, ApplicationBuilder, \
+    CallbackQueryHandler
 
-from services.dialogue_manager import DialogManager
+from services.dialogue_manager import DialogManager, showcase_callback
 from services.recommender import recommend_products
 from services.intent_classifier import IntentClassifier
 from services.dialogue_retriever import DialogueRetriever
@@ -61,6 +62,7 @@ def main():
     application.add_handler(CommandHandler('start', start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, run_bot))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    application.add_handler(CallbackQueryHandler(showcase_callback))
     application.add_error_handler(error_handler)
 
     application.run_polling()

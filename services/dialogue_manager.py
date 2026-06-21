@@ -1,6 +1,8 @@
 import random
 from sys import intern
 
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
 from data.responses import GREET_RESPONSES, FAILURE_RESPONSES, BYE_RESPONSES, SMALLTALK_RESPONSES, HOBBY_QUESTIONS
 
 from data.user_profiles import HOBBIES, USE_CASE_MAPPING
@@ -67,7 +69,12 @@ class DialogManager:
                     context.user_data["use_case"] = "archive"
                 context.user_data["dialog_state"] = "awaiting_ad_response"
 
-                await update.message.reply_text(self._build_advertising_message(hobby))
+                products = recommend_products(context.user_data)
+                top_product = products[0]
+                await update.message.reply_text(self._build_advertising_message(hobby, top_product))
+                await show_showcase_menu(update, context)
+
+                context.user_data["step"] = "after_showcase"
                 return True
 
             case "awaiting_ad_response":
@@ -103,6 +110,25 @@ class DialogManager:
                     "Не совсем понял\nХотите подобрать накопитель?"
                 )
                 return True
+
+            case "after_showcase":
+                intent = self.classifier.predict(replica)[0]
+                if intent == "yes":
+                    await update.message.reply_text("Тут типа ссылка")
+                elif intent == "show_more":
+                    products = recommend_products(context.user_data)[0:4]
+                    answer = f"Кроме {products[0]} могу предложить:"
+                    for product in products[1:4]:
+                        answer += (f'\n{product['name']}:'
+                                   f'\n - тип: {product['type']}'
+                                   f'\n - объем: {product['size_gb']} ГБ'
+                                   f'\n - цена: {product['price']} руб.\n')
+                elif intent == "no":
+                    await update.message.reply_text(
+                        "Хорошо\nЕсли у вас закончится место и понадобится помощь "
+                        "с выбором накопителя — я всегда к вашим услугам"
+                    )
+                    return True
 
             case "advertising":
                 entities = extract_entities(replica)
@@ -206,8 +232,8 @@ class DialogManager:
 
         return None
 
-    def _build_advertising_message(self, hobby):
-        return HOBBIES[hobby]["ad_message"] + "\nМогу помочь подобрать накопитель"
+    def _build_advertising_message(self, hobby, product):
+        return HOBBIES[hobby]["ad_message"] + f"\nНапример, вам может подойти {product["name"]}"
 
     async def _give_recommendations(self, update, context):
         products = recommend_products(context.user_data)
@@ -242,3 +268,46 @@ class DialogManager:
 
         count = sum(key in user_data for key in useful_entities)
         return count >= 2
+
+async def show_showcase_menu(update, context):
+    keyboard = [
+        [InlineKeyboardButton("Купить этот диск", callback_data="buy_current")],
+        [InlineKeyboardButton("Показать другие варианты", callback_data="show_more")],
+        [InlineKeyboardButton("Пока не интересно", callback_data="not_interested")]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(
+        "Что вас интересует?",
+        reply_markup=reply_markup
+    )
+
+async def showcase_callback(update, context):
+
+    query = update.callback_query
+    await query.answer()
+
+    match query.data:
+
+        case "buy_current":
+            await query.message.reply_text(
+                "Отлично! Для покупки перейдите по ссылке ..."
+            )
+
+        case "show_more":
+            products = recommend_products(context.user_data)
+            alternatives = products[1:4]
+            answer = "Другие варианты:\n\n"
+
+            for product in alternatives:
+                answer += (
+                    f"{product['name']}\n"
+                    f"Цена: {product['price']} руб.\n\n"
+                )
+            await query.message.reply_text(answer)
+
+        case "not_interested":
+            await query.message.reply_text(
+                "Хорошо. Если понадобится помощь с выбором накопителя, обращайтесь."
+            )

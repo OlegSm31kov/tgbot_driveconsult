@@ -13,6 +13,18 @@ class DialogManager:
     def __init__(self, classifier, retriever):
         self.classifier = classifier
         self.retriever = retriever
+        self.voicemode = False
+
+
+    async def _send_response(self, update, text, **kwargs):
+        if not self.voicemode:
+            await update.message.reply_text(text, **kwargs)
+            return
+
+        from services.tts_generator import send_voice_answer
+        await send_voice_answer(update, text)
+        return
+
 
     async def handle_message(self, replica, update, context):
         print(f"\nreplica: {replica}")
@@ -40,11 +52,11 @@ class DialogManager:
                 context.user_data["dialog_state"] = "asking_hobby"
                 answer = self.retriever.get_response(replica)
                 if answer:
-                    await update.message.reply_text(answer)
+                    await self._send_response(update,answer)
                 else:
-                    await update.message.reply_text(random.choice(FAILURE_RESPONSES))
+                    await self._send_response(update,random.choice(FAILURE_RESPONSES))
 
-                await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
+                await self._send_response(update,random.choice(HOBBY_QUESTIONS))
                 return True
 
             case "asking_hobby":
@@ -59,11 +71,11 @@ class DialogManager:
                     context.user_data["use_case"] = "archive"
                 context.user_data["dialog_state"] = None
 
-                await update.message.reply_text(random.choice(SMALLTALK_RESPONSES))
+                await self._send_response(update,random.choice(SMALLTALK_RESPONSES))
 
                 products = recommend_products(context.user_data)
                 top_product = products[0]
-                await update.message.reply_text(self._build_advertising_message(hobby, top_product), parse_mode="HTML")
+                await self._send_response(update,self._build_advertising_message(hobby, top_product), parse_mode="HTML")
                 await show_showcase_menu(update, top_product, context)
 
                 context.user_data["dialog_state"] = None
@@ -80,7 +92,7 @@ class DialogManager:
                     return
 
                 else:
-                    await update.message.reply_text("Каков ваш бюджет?")
+                    await self._send_response(update,"Каков ваш бюджет?")
                     return True
 
         return True
@@ -90,7 +102,7 @@ class DialogManager:
         match intent:
             case "greet":
                 context.user_data["dialog_state"] = "greeting"
-                await update.message.reply_text(random.choice(GREET_RESPONSES))
+                await self._send_response(update,random.choice(GREET_RESPONSES))
                 return
 
             case "recommend":
@@ -103,37 +115,37 @@ class DialogManager:
                     return
 
                 if "budget" not in context.user_data:
-                    await update.message.reply_text("Каков ваш бюджет?")
+                    await self._send_response(update,"Каков ваш бюджет?")
                     context.user_data["dialog_state"] = "awaiting_budget"
                     return
 
                 if "use_case" not in context.user_data:
                     context.user_data["dialog_state"] = "awaiting_use_case"
-                    await update.message.reply_text("Для каких задач нужен диск?")
+                    await self._send_response(update,"Для каких задач нужен диск?")
                     return
 
             case "smalltalk":
                 hobby_asked = context.user_data.get("hobby_asked")
                 answer = self.retriever.get_response(replica)
                 if answer:
-                    await update.message.reply_text(answer)
+                    await self._send_response(update,answer)
                     if not hobby_asked:
                         if random.choice([True, False, True]):
-                            await update.message.reply_text(random.choice(HOBBY_QUESTIONS))
+                            await self._send_response(update,random.choice(HOBBY_QUESTIONS))
                             context.user_data["dialog_state"] = "asking_hobby"
                             context.user_data["hobby_asked"] = True
                             return
                 else:
-                    await update.message.reply_text(random.choice(FAILURE_RESPONSES))
+                    await self._send_response(update,random.choice(FAILURE_RESPONSES))
                     return
 
 
             case "bye":
                 context.user_data.clear()
-                await update.message.reply_text(random.choice(BYE_RESPONSES))
+                await self._send_response(update,random.choice(BYE_RESPONSES))
 
             case _:
-                await update.message.reply_text(random.choice(FAILURE_RESPONSES))
+                await self._send_response(update,random.choice(FAILURE_RESPONSES))
 
     def _detect_hobby(self, text):
         text = text.lower()
@@ -163,7 +175,8 @@ class DialogManager:
                              f'\n - объем: {product['size_gb']} ГБ'
                              f'\n - цена: {product['price']} руб.\n\n')
 
-        await update.message.reply_text(answer, parse_mode="HTML")
+        await self._send_response(
+    update,answer, parse_mode="HTML")
 
     def _update_user_data(self, replica, context):
         entities = extract_entities(replica)

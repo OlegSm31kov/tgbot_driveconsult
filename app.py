@@ -11,6 +11,7 @@ from services.dialogue_manager import DialogManager, showcase_callback
 from services.intent_classifier import IntentClassifier
 from services.dialogue_retriever import DialogueRetriever
 from services.stt_recogniser import recognize_voice
+from services.tts_generator import send_voice_answer
 
 classifier = IntentClassifier()
 retriever = DialogueRetriever('data/dialogues_dataset.txt')
@@ -22,9 +23,18 @@ async def start(update: Update, context: CallbackContext) -> None:
                                     'А если вдруг вам нужен жёсткий диск - '
                                     'я обязательно что-нибудь подберу')
 
+async def toggle_voicemode(update: Update, context: CallbackContext) -> None:
+    if not context.user_data.get('voice_mode'):
+        context.user_data['voice_mode'] = True
+        await send_voice_answer(update, "Теперь я буду общаться с вами "
+                                        "голосовыми сообщениями")
+        return
+    context.user_data['voice_mode'] = not context.user_data['voice_mode']
+    return
+
 async def run_bot(update: Update, context: CallbackContext, replica_override=None) -> None:
     replica = (replica_override if replica_override else update.message.text)
-
+    dialog_manager.voicemode = context.user_data.get('voice_mode')
     await dialog_manager.handle_message(replica, update, context)
 
 async def handle_voice(update: Update, context: CallbackContext) -> None:
@@ -56,6 +66,7 @@ def main():
     application = ApplicationBuilder().token(TOKEN).build()
 
     application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('voicemode', toggle_voicemode))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, run_bot))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
     application.add_handler(CallbackQueryHandler(showcase_callback))

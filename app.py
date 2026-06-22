@@ -26,11 +26,16 @@ async def start(update: Update, context: CallbackContext) -> None:
 async def toggle_voicemode(update: Update, context: CallbackContext) -> None:
     if not context.user_data.get('voice_mode'):
         context.user_data['voice_mode'] = True
+    else:
+        context.user_data['voice_mode'] = not context.user_data['voice_mode']
+
+    if context.user_data['voice_mode']:
         await send_voice_answer(update, "Теперь я буду общаться с вами "
                                         "голосовыми сообщениями")
         return
-    context.user_data['voice_mode'] = not context.user_data['voice_mode']
-    return
+    else:
+        await update.message.reply_text(f"Режим общения голосовыми выключен")
+        return
 
 async def run_bot(update: Update, context: CallbackContext, replica_override=None) -> None:
     replica = (replica_override if replica_override else update.message.text)

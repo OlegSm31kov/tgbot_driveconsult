@@ -1,41 +1,29 @@
-import json
 from pathlib import Path
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.svm import LinearSVC
+import joblib
+
+from services.text_preprocessor import preprocess
+
 
 class IntentClassifier:
-    def __init__(self, intents_path = Path(__file__).parent.parent / 'data' / 'intents.json'):
-        self.vectorizer = TfidfVectorizer(
-            analyzer="char",
-            ngram_range=(3, 3)
+
+    def __init__(self):
+
+        model_dir = Path(__file__).parent.parent / "models"
+
+        self.classifier = joblib.load(
+            model_dir / "intent_model.pkl"
         )
 
-        self.classifier = LinearSVC()
-
-        self._train(intents_path)
-
-    def _train(self, intents_path):
-        with open (intents_path, 'r', encoding='utf-8') as f:
-            intents = json.load(f)
-
-        X = []
-        y = []
-
-        for intent, data in intents.items():
-            for example in data["examples"]:
-                X.append(example.lower())
-                y.append(intent)
-
-        X_vectorized = self.vectorizer.fit_transform(X)
-
-        self.classifier.fit(X_vectorized, y)
+        self.vectorizer = joblib.load(
+            model_dir / "vectorizer.pkl"
+        )
 
     def predict(self, text):
-        vector = self.vectorizer.transform([text.lower()])
-        scores = (self.classifier.decision_function(vector))[0]
+        normalized = preprocess(text)
 
-        best_score = max(scores)
-        best_intent = (self.classifier.classes_[scores.argmax()])
+        vector = self.vectorizer.transform([normalized])
+        scores = self.classifier.decision_function(vector)[0]
+        best_idx = scores.argmax()
 
-        return best_intent, best_score
+        return self.classifier.classes_[best_idx], float(scores[best_idx])

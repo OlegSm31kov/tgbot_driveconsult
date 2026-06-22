@@ -48,17 +48,6 @@ class DialogManager:
     async def _process_dialog_state(self, replica, update, context):
         state = context.user_data.get("dialog_state")
         match state:
-            case "greeting":
-                context.user_data["dialog_state"] = "asking_hobby"
-                answer = self.retriever.get_response(replica)
-                if answer:
-                    await self._send_response(update,answer)
-                else:
-                    await self._send_response(update,random.choice(FAILURE_RESPONSES))
-
-                await self._send_response(update,random.choice(HOBBY_QUESTIONS))
-                return True
-
             case "asking_hobby":
                 hobby = self._detect_hobby(replica)
                 if hobby:
@@ -101,7 +90,6 @@ class DialogManager:
     async def _process_intent(self, intent, replica, update, context):
         match intent:
             case "greet":
-                context.user_data["dialog_state"] = "greeting"
                 await self._send_response(update,random.choice(GREET_RESPONSES))
                 return
 
@@ -112,6 +100,7 @@ class DialogManager:
                 if self._can_recommend(context.user_data):
                     products = recommend_products(context.user_data)[:3]
                     await self._give_recommendations(update, products)
+                    self._clear_preferences(context)
                     return
 
                 if "budget" not in context.user_data:
@@ -193,6 +182,20 @@ class DialogManager:
 
         count = sum(key in user_data for key in useful_entities)
         return count >= 1
+
+    def _clear_preferences(self, context):
+        useful_entities = [
+            "type",
+            "budget",
+            "use_case",
+            "size_gb"
+        ]
+
+        for key in useful_entities:
+            if context.user_data.get(key):
+                context.user_data[key] = None
+
+        return
 
 async def show_showcase_menu(update, product, context):
     keyboard = [

@@ -39,12 +39,12 @@ def filter_products(entities):
     options = []
 
     d_type = entities.get('type')
-    size = entities.get('size')
+    size = entities.get('size_gb')
     budget = entities.get('budget', float('inf'))
 
     for product in products:
         if (
-                (size is None or size <= product['size'])
+                (size is None or size <= product['size_gb'])
                 and (d_type is None or d_type in product['type'])
                 and product['price'] <= budget
         ):

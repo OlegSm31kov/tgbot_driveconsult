@@ -39,6 +39,8 @@ def filter_products(entities):
     options = []
 
     d_type = entities.get('type')
+    if d_type is None and entities.get('use_case'):
+        d_type = USE_CASE_PRIORITIES[entities["use_case"]].get("preferred_type")
     size = entities.get('size_gb')
     budget = entities.get('budget', float('inf'))
 

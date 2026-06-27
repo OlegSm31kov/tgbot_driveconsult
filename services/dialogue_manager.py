@@ -128,6 +128,9 @@ class DialogManager:
                     await self._send_response(update,random.choice(FAILURE_RESPONSES))
                     return
 
+            case "show_more":
+                products = recommend_products(context.user_data)
+                await self._give_recommendations(update, products)
 
             case "bye":
                 context.user_data.clear()

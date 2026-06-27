@@ -40,5 +40,47 @@
     "price": 24299,
     "speed_mb_s": 560,
     "link": "https://tinyurl.com/27k595ev"
+  },
+  {
+    "name": "Crucial BX500",
+    "type": "SSD",
+    "size_gb": 1000,
+    "price": 9499,
+    "speed_mb_s": 540,
+    "link": "https://tinyurl.com/27k595ev"
+  },
+  {
+    "name": "ADATA SU650",
+    "type": "SSD",
+    "size_gb": 480,
+    "price": 5299,
+    "speed_mb_s": 520,
+    "link": "https://tinyurl.com/27k595ev"
+  },
+  {
+    "name": "Toshiba P300",
+    "type": "HDD",
+    "size_gb": 3000,
+    "price": 9999,
+    "speed_mb_s": 180,
+    "rec_tech": "CMR",
+    "link": "https://tinyurl.com/27k595ev"
+  },
+  {
+    "name": "Seagate IronWolf",
+    "type": "HDD",
+    "size_gb": 6000,
+    "price": 17999,
+    "speed_mb_s": 210,
+    "rec_tech": "CMR",
+    "link": "https://tinyurl.com/27k595ev"
+  },
+  {
+    "name": "Samsung 990 EVO",
+    "type": "SSD",
+    "size_gb": 2000,
+    "price": 17999,
+    "speed_mb_s": 5000,
+    "link": "https://tinyurl.com/27k595ev"
   }
 ]
